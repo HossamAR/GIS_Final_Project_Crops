@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>🌿 Crop Recommendation App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background: #f0f4f8;
+        }
+        .hero {
+            background: linear-gradient(120deg, #2980b9, #6dd5fa);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .hero h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 0;
+        }
+        .dashboard-section {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #2980b9;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input[type="file"], select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .btn:hover {
+            background: #1f618d;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        .map-container {
+            margin-top: 30px;
+        }
+        iframe {
+            width: 100%;
+            height: 500px;
+            border: none;
+            border-radius: 8px;
+        }
+        .download-link {
+            display: inline-block;
+            margin-top: 15px;
+            background: #1abc9c;
+            padding: 10px 15px;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+        .download-link:hover {
+            background: #16a085;
+        }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <h1>🌿 Crop Recommendation App</h1>
+        <p>Upload your model and data to generate crop suitability maps</p>
+    </section>
+
+    <section class="dashboard-section">
+        <div class="card-grid">
+            <div class="card">
+                <h2>Upload Crop Model</h2>
+                <form id="modelForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="modelFile">Model File (.pkl)</label>
+                        <input type="file" id="modelFile" name="model_file" accept=".pkl" required>
+                        <span id="modelFileName">No file chosen</span>
+                    </div>
+                    <button type="submit" class="btn">Upload Model</button>
+                    <div id="modelStatus" class="status"></div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Upload Geospatial Data</h2>
+                <form id="tiffForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="tiffType">Data Type</label>
+                        <select id="tiffType" name="tiff_type" required>
+                            <option value="">-- Select data type --</option>
+                            <option value="NDVI">NDVI</option>
+                            <option value="aspect">Aspect</option>
+                            <option value="elevation">Elevation</option>
+                            <option value="lulc">Land Use/Land Cover</option>
+                            <option value="org_carbon">Organic Carbon</option>
+                            <option value="precip">Precipitation</option>
+                            <option value="slope">Slope</option>
+                            <option value="soil_pH">Soil pH</option>
+                            <option value="temp">Temperature</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tiffFile">TIFF File</label>
+                        <input type="file" id="tiffFile" name="tiff_file" accept=".tif,.tiff" required>
+                        <span id="tiffFileName">No file chosen</span>
+                    </div>
+                    <button type="submit" class="btn">Upload Data</button>
+                    <div id="tiffStatus" class="status"></div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Generate Suitability Map</h2>
+                <form id="predictionForm">
+                    <div class="form-group">
+                        <label for="selectedModel">Select Model</label>
+                        <select id="selectedModel" name="model_filename" required>
+                            <option value="">-- Select a model --</option>
+                            {% for file in models %}
+                            <option value="{{ file }}">{{ file }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn">Generate Map</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 30px;">
+            <h2>🗂 Uploaded TIFFs</h2>
+            <ul>
+                {% if tiffs|length > 0 %}
+                    {% for file in tiffs %}
+                        <li>{{ file }} <button onclick="deleteFile('tiff', '{{ file }}')">Delete</button></li>
+                    {% endfor %}
+                {% else %}
+                    <li>No TIFF files uploaded yet.</li>
+                {% endif %}
+            </ul>
+
+            <h2>📂 Uploaded Models</h2>
+            <ul>
+                {% if models|length > 0 %}
+                    {% for file in models %}
+                        <li>{{ file }} <button onclick="deleteFile('model', '{{ file }}')">Delete</button></li>
+                    {% endfor %}
+                {% else %}
+                    <li>No model files uploaded yet.</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class="map-container" id="mapSection" style="display: none;">
+            <h2>Suitability Map</h2>
+            <div id="predictionMap">
+                <iframe></iframe>
+            </div>
+            <a id="downloadTiffLink" class="download-link">Download Map</a>
+        </div>
+    </section>
+
+    <script>
+        function deleteFile(fileType, fileName) {
+            fetch('/delete_file', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'file_type=' + fileType + '&filename=' + fileName
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            });
+        }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

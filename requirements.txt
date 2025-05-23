@@ -1,0 +1,8 @@
+Flask
+pandas
+numpy
+rasterio
+matplotlib
+folium
+werkzeug
+gunicorn
